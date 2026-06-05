@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPL">
+<meta name="theme-color" content="#0d0d0f">
+<title>PPL Programme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #0d0d0f; color: #e8e6e0; font-family: 'DM Mono', monospace; overflow-x: hidden; }
+  body { padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+  /* Header */
+  .header {
+    background: #0d0d0f;
+    padding: 52px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 3px; color: #fff; line-height: 1; }
+  .header-sub { font-size: 10px; color: #555; letter-spacing: 2px; margin-top: 4px; }
+
+  /* Phase tabs */
+  .phase-tabs { display: flex; gap: 8px; margin-top: 14px; }
+  .phase-tab {
+    flex: 1; padding: 10px 8px; border-radius: 3px; font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 1.5px; text-align: center; cursor: pointer;
+    border: 1px solid #2a2a2f; background: transparent; color: #666;
+    transition: all 0.15s ease;
+  }
+  .phase-tab.active { background: #e8e6e0; color: #0d0d0f; border-color: #e8e6e0; font-weight: 500; }
+
+  /* Phase note */
+  .phase-note { margin: 0 20px; padding: 12px 16px; background: rgba(255,255,255,0.02); border-left: 2px solid #333; font-size: 11px; color: #666; line-height: 1.7; }
+
+  /* Day list */
+  .day-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .day-card {
+    border-radius: 4px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.02);
+    transition: border-color 0.15s ease;
+  }
+  .day-card.rest { opacity: 0.4; cursor: default; }
+  .day-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px; cursor: pointer;
+  }
+  .day-header-left { display: flex; align-items: center; gap: 12px; }
+  .day-label { font-size: 10px; color: #555; letter-spacing: 2px; }
+  .day-type { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; }
+  .day-meta { font-size: 10px; color: #555; }
+  .day-chevron { font-size: 14px; color: #444; transition: transform 0.2s ease; }
+  .day-card.open .day-chevron { transform: rotate(180deg); }
+
+  /* Expanded session */
+  .day-body { display: none; border-top: 1px solid rgba(255,255,255,0.06); }
+  .day-card.open .day-body { display: block; }
+
+  /* Warm-up block */
+  .warmup-header {
+    padding: 10px 18px 6px;
+    font-size: 9px; color: #e8a23a; letter-spacing: 2px;
+    background: rgba(232,162,58,0.04);
+    border-bottom: 1px solid rgba(232,162,58,0.1);
+  }
+  .warmup-item {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: rgba(232,162,58,0.02);
+  }
+  .warmup-item:last-child { border-bottom: none; }
+  .warmup-name { font-size: 13px; color: #d0cec8; }
+  .warmup-duration { font-size: 11px; color: #e8a23a; }
+  .warmup-cue { font-size: 11px; color: #666; line-height: 1.6; margin-top: 2px; }
+
+  /* Working sets */
+  .sets-header {
+    display: grid; grid-template-columns: 1fr 44px 72px;
+    padding: 10px 18px 6px;
+    font-size: 9px; color: #555; letter-spacing: 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .exercise-item {
+    display: grid; grid-template-columns: 1fr 44px 72px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: start; gap: 4px;
+  }
+  .exercise-item:last-child { border-bottom: none; }
+  .exercise-name { font-size: 13px; color: #e8e6e0; line-height: 1.4; }
+  .exercise-cue { font-size: 11px; color: #666; line-height: 1.6; grid-column: 1 / -1; margin-top: 4px; }
+  .exercise-sets { font-size: 14px; font-weight: 500; }
+  .exercise-reps { font-size: 12px; color: #999; }
+
+  /* Rest reminder */
+  .rest-reminder {
+    padding: 8px 18px; font-size: 10px; color: #555; letter-spacing: 1px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.01);
+  }
+
+  /* Section headers */
+  .section-header { padding: 20px 20px 8px; font-size: 9px; color: #444; letter-spacing: 3px; }
+
+  /* Overload rules */
+  .rules-list { margin: 0 20px; border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .rule-item { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .rule-item:last-child { border-bottom: none; }
+  .rule-if { font-size: 10px; color: #e8a23a; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .rule-then { font-size: 12px; color: #aaa; line-height: 1.5; }
+
+  /* Nutrition */
+  .nutrition-list { margin: 0 20px; border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .nutrition-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .nutrition-item:last-child { border-bottom: none; }
+  .nutrition-label { font-size: 11px; color: #666; }
+  .nutrition-value { font-size: 12px; color: #e8e6e0; font-weight: 500; text-align: right; max-width: 55%; }
+
+  /* Shoulder warning */
+  .shoulder-warning {
+    margin: 12px 20px 0;
+    background: rgba(232,93,58,0.06);
+    border: 1px solid rgba(232,93,58,0.2);
+    border-radius: 4px; padding: 14px 16px;
+    display: flex; gap: 10px;
+  }
+  .warning-icon { color: #e85d3a; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .warning-title { font-size: 10px; color: #e85d3a; letter-spacing: 1px; margin-bottom: 6px; }
+  .warning-body { font-size: 11px; color: #888; line-height: 1.8; }
+
+  /* Install banner */
+  .install-banner {
+    margin: 20px 20px 0;
+    background: rgba(58,123,232,0.07);
+    border: 1px solid rgba(58,123,232,0.2);
+    border-radius: 4px; padding: 12px 16px;
+    font-size: 11px; color: #7a9fd4; line-height: 1.7;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .install-banner-close { margin-left: auto; cursor: pointer; font-size: 14px; color: #3a7be8; flex-shrink: 0; }
+
+  .spacer { height: 32px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">PPL PROGRAMME</div>
+  <div class="header-sub">6-DAY SPLIT &nbsp;·&nbsp; PUSH · PULL · LEGS &nbsp;·&nbsp; DUMBBELL ONLY</div>
+  <div class="phase-tabs">
+    <button class="phase-tab active" onclick="setPhase(0)" id="tab0">PHASE 1 &nbsp;·&nbsp; WKS 1–3</button>
+    <button class="phase-tab" onclick="setPhase(1)" id="tab1">PHASE 2 &nbsp;·&nbsp; WK 4+</button>
+  </div>
+</div>
+
+<div id="app"></div>
+
+<script>
+const warmups = {
+  PUSH: [
+    { name: "Arm circles", duration: "30 sec each direction", cue: "Small to large. Loosens shoulder capsule. Non-negotiable with right shoulder." },
+    { name: "Rear delt pull (light dumbbell)", duration: "2 × 15 reps", cue: "Activates rotator cuff before pressing." },
+    { name: "Incline press warm-up set", duration: "1 × 15 reps", cue: "50% of working weight. Groove the pattern, not fatigue." },
+  ],
+  PULL: [
+    { name: "Cat-cow / thoracic rotation", duration: "60 sec", cue: "Mobilises the spine before hinging. Reduces lower back strain on RDL." },
+    { name: "Hip hinge bodyweight", duration: "2 × 10 reps", cue: "Hands down legs, feel the hamstring load. Pattern practice." },
+    { name: "Bent-over row warm-up set", duration: "1 × 15 reps", cue: "50% of working weight. Prime the lats." },
+  ],
+  LEGS: [
+    { name: "Bodyweight squat", duration: "2 × 15 reps", cue: "Slow descent. Pause at bottom. Wake up the glutes and quads." },
+    { name: "Hip circles", duration: "30 sec each leg", cue: "Full range of motion. Loosens hip flexors." },
+    { name: "Goblet squat warm-up set", duration: "1 × 15 reps", cue: "Light dumbbell. Pattern warm-up before working sets." },
+  ],
+};
+
+const phases = [
+  {
+    label: "Phase 1", weeks: "Weeks 1–3", duration: "45 min",
+    note: "Habit formation. Conservative load. Form priority. No overhead pressing. 4 exercises per session.",
+    days: [
+      { day: "Day 1", type: "PUSH", exercises: [
+        { name: "Incline Dumbbell Press", sets: "3", reps: "10–12", cue: "30–45° incline. Controlled descent. Protect right shoulder." },
+        { name: "Dumbbell Lateral Raise", sets: "3", reps: "12–15", cue: "Light weight. Lead with elbows. Stop at shoulder height." },
+        { name: "Dumbbell Chest Fly", sets: "3", reps: "12–15", cue: "Slight bend in elbows. Wide arc. Stretch at bottom, squeeze at top." },
+        { name: "Dumbbell Tricep Kickback", sets: "3", reps: "12–15", cue: "Upper arm parallel to floor. Full extension." },
+      ]},
+      { day: "Day 2", type: "PULL", exercises: [
+        { name: "Dumbbell Romanian Deadlift", sets: "3", reps: "10–12", cue: "Hinge at hips. Soft knees. Feel hamstring stretch." },
+        { name: "Dumbbell Bent-Over Row", sets: "3", reps: "10–12", cue: "Chest up. Pull to hip. Squeeze at top." },
+        { name: "Dumbbell Rear Delt Fly", sets: "3", reps: "15", cue: "Hinge forward. Arms wide. Squeeze at top. Shoulder health." },
+        { name: "Dumbbell Bicep Curl", sets: "3", reps: "12–15", cue: "No swinging. Full supination at top." },
+      ]},
+      { day: "Day 3", type: "LEGS", exercises: [
+        { name: "Dumbbell Goblet Squat", sets: "3", reps: "12–15", cue: "Hold one dumbbell at chest. Knees track toes. Full depth." },
+        { name: "Dumbbell Romanian Deadlift", sets: "3", reps: "10–12", cue: "Hinge at hips. Builds posterior chain." },
+        { name: "Dumbbell Reverse Lunge", sets: "3", reps: "10 each leg", cue: "Step back. Knee just above floor. Drive through front heel." },
+        { name: "Dumbbell Calf Raise", sets: "3", reps: "20", cue: "Full range. Pause at top. Use a step if available." },
+      ]},
+      { day: "Day 4", type: "PUSH", exercises: [
+        { name: "Incline Dumbbell Press", sets: "3", reps: "10–12", cue: "Match Day 1. Aim to add 0.5–1 rep if felt easy." },
+        { name: "Dumbbell Lateral Raise", sets: "3", reps: "12–15", cue: "Same as Day 1." },
+        { name: "Dumbbell Chest Fly", sets: "3", reps: "12–15", cue: "Same as Day 1." },
+        { name: "Dumbbell Tricep Kickback", sets: "3", reps: "12–15", cue: "Same as Day 1." },
+      ]},
+      { day: "Day 5", type: "PULL", exercises: [
+        { name: "Dumbbell Romanian Deadlift", sets: "3", reps: "10–12", cue: "Same as Day 2." },
+        { name: "Dumbbell Bent-Over Row", sets: "3", reps: "10–12", cue: "Same as Day 2." },
+        { name: "Dumbbell Rear Delt Fly", sets: "3", reps: "15", cue: "Shoulder health. Non-negotiable on every pull day." },
+        { name: "Dumbbell Hammer Curl", sets: "3", reps: "12–15", cue: "Neutral grip. Builds brachialis." },
+      ]},
+      { day: "Day 6", type: "LEGS", exercises: [
+        { name: "Dumbbell Goblet Squat", sets: "3", reps: "12–15", cue: "Add weight if 15 reps felt easy on Day 3." },
+        { name: "Dumbbell Sumo Squat", sets: "3", reps: "12–15", cue: "Wide stance. Toes out. Targets inner quad and adductors." },
+        { name: "Dumbbell Reverse Lunge", sets: "3", reps: "10 each leg", cue: "Same as Day 3." },
+        { name: "Dumbbell Calf Raise", sets: "3", reps: "20", cue: "Same as Day 3." },
+      ]},
+      { day: "Day 7", type: "REST", exercises: [] },
+    ]
+  },
+  {
+    label: "Phase 2", weeks: "Week 4+", duration: "45 min",
+    note: "Volume increase. Flat press introduced — assess shoulder first. Overhead cautiously added. Progressive overload formalised.",
+    days: [
+      { day: "Day 1", type: "PUSH", exercises: [
+        { name: "Incline Dumbbell Press", sets: "4", reps: "8–10", cue: "Primary mover. Heavier than Phase 1." },
+        { name: "Flat Dumbbell Press", sets: "3", reps: "10–12", cue: "Introduce only if shoulder pain-free. Stop if discomfort." },
+        { name: "Dumbbell Lateral Raise", sets: "3", reps: "12–15", cue: "Superset with triceps if time-pressed." },
+        { name: "Overhead Tricep Extension", sets: "3", reps: "12–15", cue: "Long head emphasis. Introduce cautiously, monitor shoulder." },
+      ]},
+      { day: "Day 2", type: "PULL", exercises: [
+        { name: "Dumbbell Romanian Deadlift", sets: "4", reps: "8–10", cue: "Increase weight from Phase 1." },
+        { name: "Dumbbell Bent-Over Row", sets: "4", reps: "8–10", cue: "Heavier. Control the eccentric." },
+        { name: "Dumbbell Bicep Curl", sets: "3", reps: "10–12", cue: "Add incline curl variation if time allows." },
+        { name: "Dumbbell Rear Delt Fly", sets: "3", reps: "15", cue: "Shoulder health. Non-negotiable." },
+      ]},
+      { day: "Day 3", type: "LEGS", exercises: [
+        { name: "Dumbbell Goblet Squat", sets: "4", reps: "10–12", cue: "Heavier. Pause at bottom for 1 second." },
+        { name: "Dumbbell Romanian Deadlift", sets: "4", reps: "8–10", cue: "Posterior chain anchor." },
+        { name: "Dumbbell Walking Lunge", sets: "3", reps: "12 each leg", cue: "Replaces reverse lunge. Better glute activation." },
+        { name: "Dumbbell Calf Raise", sets: "3", reps: "20", cue: "Stand on edge of step if available. Full range." },
+      ]},
+      { day: "Day 4", type: "PUSH", exercises: [
+        { name: "Incline Dumbbell Press", sets: "4", reps: "8–10", cue: "Same as Day 1 Phase 2." },
+        { name: "Flat Dumbbell Press", sets: "3", reps: "10–12", cue: "Shoulder check each session." },
+        { name: "Dumbbell Lateral Raise", sets: "3", reps: "12–15", cue: "" },
+        { name: "Dumbbell Tricep Kickback", sets: "3", reps: "12–15", cue: "Drop set on final set if time allows." },
+      ]},
+      { day: "Day 5", type: "PULL", exercises: [
+        { name: "Dumbbell Romanian Deadlift", sets: "4", reps: "8–10", cue: "" },
+        { name: "Dumbbell Bent-Over Row", sets: "4", reps: "8–10", cue: "" },
+        { name: "Dumbbell Hammer Curl", sets: "3", reps: "10–12", cue: "" },
+        { name: "Dumbbell Rear Delt Fly", sets: "3", reps: "15", cue: "Shoulder health. Non-negotiable on pull days." },
+      ]},
+      { day: "Day 6", type: "LEGS", exercises: [
+        { name: "Dumbbell Goblet Squat", sets: "4", reps: "10–12", cue: "" },
+        { name: "Dumbbell Sumo Squat", sets: "3", reps: "12–15", cue: "" },
+        { name: "Dumbbell Walking Lunge", sets: "3", reps: "12 each leg", cue: "" },
+        { name: "Dumbbell Calf Raise", sets: "3", reps: "20", cue: "" },
+      ]},
+      { day: "Day 7", type: "REST", exercises: [] },
+    ]
+  }
+];
+
+const overloadRules = [
+  { trigger: "Hit top of rep range on all sets", action: "Increase weight by 2.5kg next session" },
+  { trigger: "Miss bottom of rep range on 2+ sets", action: "Hold weight, focus on form" },
+  { trigger: "3 weeks at same weight", action: "Force increase by 1.25kg regardless" },
+  { trigger: "Right shoulder discomfort on press", action: "Drop to incline only, reduce load 10%" },
+];
+
+const nutritionRules = [
+  { label: "Bodyweight", value: "97.5kg" },
+  { label: "Daily protein target", value: "175g" },
+  { label: "Calorie approach", value: "Maintenance or −200–300 kcal" },
+  { label: "Track for", value: "4–6 weeks then intuitive" },
+  { label: "Priority sources", value: "Chicken, eggs, yoghurt, cottage cheese, lean mince" },
+];
+
+const typeColors = { PUSH: "#e85d3a", PULL: "#3a7be8", LEGS: "#3ab87a", REST: "#555" };
+
+let currentPhase = 0;
+let openDay = null;
+let installDismissed = false;
+
+function setPhase(i) {
+  currentPhase = i;
+  openDay = null;
+  document.getElementById('tab0').classList.toggle('active', i === 0);
+  document.getElementById('tab1').classList.toggle('active', i === 1);
+  render();
+}
+
+function toggleDay(i) {
+  openDay = openDay === i ? null : i;
+  render();
+}
+
+function dismissInstall() {
+  installDismissed = true;
+  render();
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
+}
+
+function render() {
+  const phase = phases[currentPhase];
+  let html = '';
+
+  // Install banner (iOS only, not in standalone)
+  if (isIOS() && !installDismissed) {
+    html += `<div class="install-banner">
+      <div>
+        <strong style="color:#5a9fd4;font-size:11px;letter-spacing:1px;">ADD TO HOME SCREEN</strong><br>
+        Tap the Share button below, then "Add to Home Screen" for offline access as an app icon.
+      </div>
+      <span class="install-banner-close" onclick="dismissInstall()">✕</span>
+    </div>`;
+  }
+
+  html += `<div class="phase-note">${phase.note}</div>`;
+  html += `<div class="day-list">`;
+
+  phase.days.forEach((day, i) => {
+    const color = typeColors[day.type];
+    const isOpen = openDay === i;
+    const isRest = day.type === 'REST';
+    const wu = warmups[day.type];
+
+    html += `<div class="day-card${isOpen ? ' open' : ''}${isRest ? ' rest' : ''}" id="card-${i}">`;
+
+    // Header
+    html += `<div class="day-header" ${!isRest ? `onclick="toggleDay(${i})"` : ''}>
+      <div class="day-header-left">
+        <div>
+          <div class="day-label">${day.day.toUpperCase()}</div>
+          <div class="day-type" style="color:${color}">${day.type}</div>
+        </div>
+        ${!isRest ? `<div class="day-meta">${day.exercises.length} exercises · ${phase.duration}</div>` : ''}
+      </div>
+      ${!isRest ? `<div class="day-chevron">▾</div>` : ''}
+    </div>`;
+
+    // Body
+    if (!isRest) {
+      html += `<div class="day-body">`;
+
+      // Warm-up
+      if (wu) {
+        html += `<div class="warmup-header">WARM-UP · 5–7 MIN</div>`;
+        wu.forEach(w => {
+          html += `<div class="warmup-item">
+            <div class="warmup-name">${w.name}</div>
+            <div class="warmup-duration">${w.duration}</div>
+            ${w.cue ? `<div class="warmup-cue">${w.cue}</div>` : ''}
+          </div>`;
+        });
+      }
+
+      // Working sets
+      html += `<div class="sets-header" style="border-top-color:${color}22">
+        <span>EXERCISE</span><span>SETS</span><span>REPS</span>
+      </div>`;
+
+      day.exercises.forEach(ex => {
+        html += `<div class="exercise-item">
+          <div class="exercise-name">${ex.name}</div>
+          <div class="exercise-sets" style="color:${color}">${ex.sets}</div>
+          <div class="exercise-reps">${ex.reps}</div>
+          ${ex.cue ? `<div class="exercise-cue">${ex.cue}</div>` : ''}
+        </div>`;
+      });
+
+      html += `<div class="rest-reminder">REST 60–90 SEC BETWEEN SETS</div>`;
+      html += `</div>`; // day-body
+    }
+
+    html += `</div>`; // day-card
+  });
+
+  html += `</div>`; // day-list
+
+  // Progressive overload
+  html += `<div class="section-header">PROGRESSIVE OVERLOAD RULES</div>`;
+  html += `<div class="rules-list">`;
+  overloadRules.forEach(r => {
+    html += `<div class="rule-item">
+      <div class="rule-if">IF: ${r.trigger}</div>
+      <div class="rule-then">THEN: ${r.action}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Nutrition
+  html += `<div class="section-header">NUTRITION TARGETS</div>`;
+  html += `<div class="nutrition-list">`;
+  nutritionRules.forEach(r => {
+    html += `<div class="nutrition-item">
+      <div class="nutrition-label">${r.label}</div>
+      <div class="nutrition-value">${r.value}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Shoulder warning
+  html += `<div class="shoulder-warning">
+    <div class="warning-icon">⚠</div>
+    <div>
+      <div class="warning-title">RIGHT SHOULDER PROTOCOL</div>
+      <div class="warning-body">Incline only until week 4. Rear delt fly on every pull day, non-negotiable. Introduce flat press at week 4 only if pain-free. Overhead movements cautiously in Phase 2. Drop load 10% and revert to incline-only at first sign of discomfort.</div>
+    </div>
+  </div>`;
+
+  html += `<div class="spacer"></div>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
