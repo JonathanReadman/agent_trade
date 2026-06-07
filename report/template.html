@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Trade Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0f; color: #e8e6e0; margin: 0; padding: 2rem; }
+  h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+  .subtitle { color: #888; margin-bottom: 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .card { background: #1a1a1f; border-radius: 8px; padding: 1.25rem; }
+  .card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card .value { font-size: 1.75rem; font-weight: 700; margin-top: 0.25rem; }
+  .positive { color: #3ab87a; }
+  .negative { color: #e85d3a; }
+  .neutral { color: #e8e6e0; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+  .chart-box { background: #1a1a1f; border-radius: 8px; padding: 1.25rem; }
+  .chart-box h3 { margin: 0 0 1rem; font-size: 0.9rem; color: #bbb; }
+  table { width: 100%; border-collapse: collapse; background: #1a1a1f; border-radius: 8px; overflow: hidden; }
+  th { background: #111; padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #888; }
+  td { padding: 0.75rem 1rem; border-top: 1px solid #222; font-size: 0.875rem; }
+  .reasoning { font-size: 0.75rem; color: #888; max-width: 400px; }
+  @media (max-width: 768px) { .charts { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Agent Trade</h1>
+<p class="subtitle">Paper Trading Report — S&amp;P 500 · Claude Opus</p>
+
+<div class="grid">
+  <div class="card">
+    <div class="label">Portfolio P&amp;L</div>
+    <div class="value {% if metrics.portfolio_pnl_pct >= 0 %}positive{% else %}negative{% endif %}">
+      {{ "%.2f"|format(metrics.portfolio_pnl_pct) }}%
+    </div>
+  </div>
+  <div class="card">
+    <div class="label">SPY Benchmark</div>
+    <div class="value {% if metrics.spy_pnl_pct >= 0 %}positive{% else %}negative{% endif %}">
+      {{ "%.2f"|format(metrics.spy_pnl_pct) }}%
+    </div>
+  </div>
+  <div class="card">
+    <div class="label">Win Rate</div>
+    <div class="value neutral">{{ "%.0f"|format(metrics.win_rate * 100) }}%</div>
+  </div>
+  <div class="card">
+    <div class="label">Total Trades</div>
+    <div class="value neutral">{{ metrics.total_trades }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Avg Gain</div>
+    <div class="value positive">{{ "%.2f"|format(metrics.avg_gain_pct) }}%</div>
+  </div>
+  <div class="card">
+    <div class="label">Avg Loss</div>
+    <div class="value negative">{{ "%.2f"|format(metrics.avg_loss_pct) }}%</div>
+  </div>
+  {% if metrics.sharpe_ratio is not none %}
+  <div class="card">
+    <div class="label">Sharpe Ratio</div>
+    <div class="value neutral">{{ "%.2f"|format(metrics.sharpe_ratio) }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="charts">
+  <div class="chart-box">
+    <h3>Portfolio vs SPY (Daily)</h3>
+    <canvas id="portfolioChart" height="200"></canvas>
+  </div>
+  <div class="chart-box">
+    <h3>Confidence Calibration</h3>
+    <canvas id="calibrationChart" height="200"></canvas>
+  </div>
+</div>
+
+<h2 style="margin-bottom:1rem">All Trades</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Ticker</th><th>Action</th><th>Confidence</th>
+      <th>Signal Price</th><th>Exec Price</th><th>P&amp;L %</th><th>Reasoning</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for trade in metrics.trades %}
+    <tr>
+      <td><strong>{{ trade.ticker }}</strong></td>
+      <td>{{ trade.action }}</td>
+      <td>{{ "%.0f"|format(trade.confidence * 100) }}%</td>
+      <td>${{ "%.2f"|format(trade.signal_price) }}</td>
+      <td>{% if trade.execution_price %}${{ "%.2f"|format(trade.execution_price) }}{% else %}—{% endif %}</td>
+      <td class="{% if trade.pnl_pct > 0 %}positive{% elif trade.pnl_pct < 0 %}negative{% else %}neutral{% endif %}">
+        {{ "%.2f"|format(trade.pnl_pct) }}%
+      </td>
+      <td class="reasoning">{{ trade.reasoning[:200] }}{% if trade.reasoning|length > 200 %}…{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+const snapshots = {{ snapshots_json }};
+const tradesData = {{ trades_json }};
+
+if (snapshots.length > 1) {
+  new Chart(document.getElementById('portfolioChart'), {
+    type: 'line',
+    data: {
+      labels: snapshots.map(s => s.date),
+      datasets: [
+        { label: 'Portfolio', data: snapshots.map(s => s.total_value_usd), borderColor: '#3ab87a', tension: 0.3, fill: false },
+        { label: 'SPY (scaled)', data: snapshots.map(s => s.spy_close ? s.spy_close * (100000 / snapshots[0].spy_close) : null), borderColor: '#3a7be8', tension: 0.3, fill: false, borderDash: [5,5] }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { labels: { color: '#e8e6e0' } } }, scales: { x: { ticks: { color: '#888' } }, y: { ticks: { color: '#888' } } } }
+  });
+}
+
+if (tradesData.length > 0) {
+  new Chart(document.getElementById('calibrationChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Trade',
+        data: tradesData.map(t => ({ x: t.confidence, y: t.pnl_pct })),
+        backgroundColor: tradesData.map(t => t.pnl_pct >= 0 ? 'rgba(58,184,122,0.7)' : 'rgba(232,93,58,0.7)'),
+        pointRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Confidence', color: '#888' }, ticks: { color: '#888' }, min: 0.5, max: 1.0 },
+        y: { title: { display: true, text: 'P&L %', color: '#888' }, ticks: { color: '#888' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
